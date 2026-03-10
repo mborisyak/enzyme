@@ -1,0 +1,32 @@
+[workspace]
+authors = ["Mark"]
+channels = ["conda-forge"]
+name = "enzyme"
+platforms = ["linux-64"]
+version = "0.1.0"
+
+[tasks]
+setup = "python -c \"import black, enzyme, jax, matplotlib, mcp, numpy, pydantic, pytest, ruff, scipy, yaml; print('setup complete')\""
+test = "pytest tests"
+test-mcp = "pytest tests/mcp"
+lint = { depends-on = ["lint-ruff", "lint-black"] }
+lint-ruff = "ruff check mcp tests/mcp"
+lint-black = "black --check --workers 1 mcp tests/mcp"
+format = { depends-on = ["format-black", "format-ruff"] }
+format-black = "black mcp tests/mcp"
+format-ruff = "ruff check --fix mcp tests/mcp"
+run = "python mcp/server.py"
+
+[dependencies]
+python = ">=3.11,<3.13"
+pip = ">=24"
+
+[pypi-dependencies]
+black = ">=24"
+mcp = ">=1.2.0"
+pydantic = ">=2.0.0"
+pytest = ">=8"
+pyyaml = ">=6.0.0"
+ruff = ">=0.6.0"
+matplotlib = ">=3.8.0"
+enzyme = { path = ".", editable = true }

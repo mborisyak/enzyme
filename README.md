@@ -216,3 +216,171 @@ noise: 0.025           # Gaussian noise std (mM)
 ```
 
 A custom config file can be passed to any script via `--config`.
+> Looking for the original enzyme model documentation? See [`README.enzyme-model.md`](README.enzyme-model.md).
+
+# MCP Simulator
+
+This repository exposes the local enzyme CLI as an MCP server with stable JSON contracts.
+
+It provides now only one tool, because sampling of kinetic parameters should be hidden from the user:
+
+- `simulate_enzyme_dynamics`
+
+The implementation lives in `mcp/` and calls scripts from `scripts/`.
+
+For development, I usually use **Pixi**(pixi.prefix.dev). The repository includes a `pixi.toml` file that defines all required dependencies.
+
+To install Pixi and enter the development environment:
+
+```bash
+curl -fsSL https://pixi.sh/install.sh | sh
+pixi shell
+pixi run setup
+pixi run test
+pixi run run
+```
+
+## Directory Layout
+
+```text
+enzyme/
+  mcp/
+    server.py           # FastMCP server + tool registration
+    mcp_tools.py        # request validation + envelope handling
+    mcp_contracts.py    # pydantic contracts (v1 API compatibility)
+    mcp_simulation.py   # CLI runner and response transformation
+    mcp_errors.py       # structured error and success envelopes
+  tests/mcp/
+    test_contracts.py
+    test_simulation.py
+    test_tools.py
+  scripts/              # wrapped simulation implementation
+```
+
+## Quick Start
+
+From the `enzyme/` directory:
+
+```bash
+python mcp/server.py
+```
+
+This starts the MCP server over stdio transport.
+
+## Tool Contracts
+
+Contract version is currently `1.0`.
+
+### `simulate_enzyme_dynamics`
+
+Request:
+
+```json
+{
+  "contract_version": "1.0",
+  "conditions": {
+    "exp-1": {
+      "A": 1.0,
+      "B": 2.0,
+      "E": 1.0,
+      "temperature": 36.6
+    }
+  },
+  "time": {
+    "t_start": 0.0,
+    "t_end": 30.0,
+    "measurements": 10
+  },
+  "solutions": {
+    "A": 3.0,
+    "B": 3.0,
+    "E": 0.003
+  },
+  "device": "cpu",
+  "units": {
+    "time": "s",
+    "temperature": "C",
+    "solution_volume": "mL",
+    "concentration": "mM"
+  }
+}
+```
+
+Notes:
+
+- `conditions` must be non-empty.
+- `A`, `B`, and `E` must be non-negative finite values.
+- `time` must satisfy `t_end > t_start`, with `measurements > 1`.
+- Measurement noise is loaded from `config/config.yaml` (`noise`).
+- Kinetic parameters are loaded from `config/parameters-123456789.yaml`.
+- Unknown fields are rejected (`additionalProperties: false` behavior).
+- Numeric fields must be JSON numbers (stringified numbers are rejected).
+
+## Response Envelope
+
+All tools return a top-level envelope.
+
+Success:
+
+```json
+{
+  "ok": true,
+  "data": {}
+}
+```
+
+Error:
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "validation_error",
+    "message": "Request payload failed schema validation."
+  }
+}
+```
+
+`details` is included only when extra context is available.
+
+Common error codes include:
+
+- `validation_error`
+- `parameter_file_missing`
+- `parameter_file_invalid`
+- `model_config_missing`
+- `model_config_invalid`
+- `enzyme_directory_missing`
+- `cli_not_found`
+- `cli_execution_failed`
+- `cli_timeout`
+- `missing_output`
+- `invalid_cli_output`
+- `internal_error`
+
+## Implementation Details
+
+- `mcp/server.py` registers FastMCP tools and delegates to `EnzymeMcpService`.
+- `mcp/mcp_tools.py` validates request payloads via pydantic and wraps responses.
+- `mcp/mcp_simulation.py` shells out to `scripts/experiment.py`.
+- Metadata is included in successful tool responses (`model_identifier`, `model_version`, solver config, units, warnings, diagnostics, deterministic, seed, tool_contract_version).
+
+## Testing
+
+From the `enzyme/` directory:
+
+```bash
+python3 -m pytest tests/mcp -q
+```
+
+or 
+
+```bash
+pixi run test
+```
+
+## Development Notes
+
+- Keep tool contracts backward compatible; breaking changes should bump contract version.
+- Keep MCP errors structured and avoid leaking stack traces.
+- `mcp_simulation.py` uses temporary working directories and enforces CLI timeouts.
