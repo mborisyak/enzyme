@@ -6,7 +6,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Tuple
 
 import yaml
 
@@ -14,7 +14,6 @@ try:  # pragma: no cover - import style depends on invocation mode
     from .mcp_contracts import (
         ExperimentTrajectory,
         MetadataofRun,
-        REQUIRED_PARAMETER_NAMES,
         SimulateEnzymeDynamicsRequest,
         SimulateEnzymeDynamicsResponse,
     )
@@ -26,7 +25,6 @@ except ImportError:  # pragma: no cover
     from mcp_contracts import (  # type: ignore
         ExperimentTrajectory,
         MetadataofRun,
-        REQUIRED_PARAMETER_NAMES,
         SimulateEnzymeDynamicsRequest,
         SimulateEnzymeDynamicsResponse,
     )
@@ -40,6 +38,21 @@ except ModuleNotFoundError:  # pragma: no cover
 DEFAULT_ENZYME_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PARAMETER_FILE_RELATIVE = Path("config/parameters-123456789.yaml")
 DEFAULT_MODEL_CONFIG_RELATIVE = Path("config/config.yaml")
+REQUIRED_PARAMETER_NAMES: Tuple[str, ...] = (
+    "log_k0_cat",
+    "Q10_cat",
+    "log_K0_A",
+    "Q10_A",
+    "log_K0_B",
+    "Q10_B",
+    "log_K0i_C",
+    "Q10_C",
+    "log_K0i_D",
+    "Q10_D",
+    "T_melting",
+    "delta_H",
+    "delta_C",
+)
 
 
 def _trim(text: str, limit: int = 2000) -> str:
@@ -106,6 +119,7 @@ class EnzymeCliRunner:
                 },
             )
 
+        # check that file with params includes all params
         missing = [name for name in REQUIRED_PARAMETER_NAMES if name not in raw_parameters]
         if missing:
             raise ToolExecutionError(
@@ -114,6 +128,7 @@ class EnzymeCliRunner:
                 details={"parameter_file": str(parameters_path), "missing": missing},
             )
 
+        # check that file with params is not corrupted
         for name in REQUIRED_PARAMETER_NAMES:
             try:
                 numeric = float(raw_parameters[name])

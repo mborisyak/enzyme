@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from typing import Any, Dict, List, NotRequired, Optional, Required, Tuple, TypedDict
+from typing import Any, Dict, List, NotRequired, Optional, Required, TypedDict
 
 try:
     from pydantic.v1 import BaseModel, Field, root_validator, validator
@@ -9,22 +9,6 @@ except ImportError:  # pragma: no cover
     from pydantic import BaseModel, Field, root_validator, validator
 
 TOOL_CONTRACT_VERSION = "1.0"
-
-REQUIRED_PARAMETER_NAMES: Tuple[str, ...] = (
-    "log_k0_cat",
-    "Q10_cat",
-    "log_K0_A",
-    "Q10_A",
-    "log_K0_B",
-    "Q10_B",
-    "log_K0i_C",
-    "Q10_C",
-    "log_K0i_D",
-    "Q10_D",
-    "T_melting",
-    "delta_H",
-    "delta_C",
-)
 
 
 def _ensure_finite(name: str, value: float) -> float:
