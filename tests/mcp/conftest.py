@@ -1,0 +1,11 @@
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+ENZYME_ROOT = Path(__file__).resolve().parents[2]
+SRC_MCP = ENZYME_ROOT / "mcp"
+
+if str(SRC_MCP) not in sys.path:
+    sys.path.insert(0, str(SRC_MCP))
+
